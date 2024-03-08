@@ -1,7 +1,7 @@
-./.idea
-./keys
-./temp_download_path
-./venv
-./.venv
+/.idea
+/keys
+/temp_download_path
+/venv
+/.venv
 ffmpeg_cmd_bot.iml
 ffmpeg_cmd_bot.log
