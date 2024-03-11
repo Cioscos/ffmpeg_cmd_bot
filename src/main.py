@@ -131,10 +131,10 @@ async def start_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     The callback called when the bot receive the classical start command on a new conversation.
     It calls db_get_chat from dbjson file to read the chat or initialize it
     """
-    welcome_text = ("Use the /init command to start a conversation with the bot\n"
+    welcome_text = ("Use the /init command to start a conversation with the bot!\n"
                     "Please don't insert arguments after the output file name. Only one output is currently supported.\n"
-                    "Example usage: -vf scale=1280x720 resized.jpg\n"
-                    "The input file name is automatically retrieved from the file.")
+                    "Use the /init command to start the command conversation.\n"
+                    "The input file/s name is automatically retrieved from the file.")
     await update.message.reply_text(welcome_text, ParseMode.MARKDOWN)
 
 
@@ -194,14 +194,14 @@ async def command_waiting_callback(update: Update, context: ContextTypes.DEFAULT
     file_plural = 'file' if len(context.user_data[MEDIAGROUP_FILE_NAMES_KEY]) == 1 else 'files'
     if update.effective_message.text == '/pre':
         await update.effective_message.reply_text(f"Send me the ffmpeg pre-input command part to apply to the {file_plural}.\n"
-                                                  f"It is the command part before the input files")
+                                                  f"It is the command part before the input files.")
         return PRE_INPUT_STATE
     elif update.effective_message.text == '/post':
         await update.effective_message.reply_text(f"Send me the ffmpeg post-input command part to apply to the {file_plural}.\n"
-                                                  f"It is the command part after the input files")
+                                                  f"It is the command part after the input files.")
         return POST_INPUT_STATE
     else:
-        await update.effective_message.reply_text('Command deleted, use /pre or /post command again or /stop')
+        await update.effective_message.reply_text('Command deleted, use /pre or /post command again or /stop .')
         context.user_data.setdefault(PRE_INPUT_PARTS_KEY, None)
         context.user_data.setdefault(POST_INPUT_PARTS_KEY, None)
         return COMMAND_WAITING
@@ -214,7 +214,7 @@ async def pre_input_command_callback(update: Update, context: ContextTypes.DEFAU
 
     context.user_data[PRE_INPUT_PARTS_KEY] = parts
 
-    await update.effective_message.reply_text(f'Now send the post command (the part of the command after the input {file_plural}')
+    await update.effective_message.reply_text(f'Now send the post command (the part of the command after the input {file_plural}.')
 
     return POST_INPUT_STATE
 
@@ -237,11 +237,11 @@ async def post_input_command_callback(update: Update, context: ContextTypes.DEFA
     context.user_data[OUTPUT_PATH_KEY] = output_file
 
     await update.effective_message.reply_text(f"This is the command that will be applied to the {file_plural}:\n"
-                                              f"{' '.join(effective_command_parts)}")
+                                              f"`{' '.join(effective_command_parts)}`", ParseMode.MARKDOWN)
 
-    await update.effective_message.reply_text('Send /process command to generate the output\n'
-                                              '/reset to delete the command inserted\n'
-                                              '/stop to close the conversation')
+    await update.effective_message.reply_text('Send:\n- /process command to generate the output.\n'
+                                              '- /reset to delete the command inserted.\n'
+                                              '- /stop to close the conversation.')
 
     return POST_INPUT_STATE
 
@@ -272,7 +272,7 @@ async def command_processing_callback(update: Update, context: ContextTypes.DEFA
     # sending back the processed photo if exists
     if output_file and os.path.exists(output_file) and os.path.getsize(output_file) != 0:
         if (os.path.getsize(output_file) / (1024 * 1024)) > 50:
-            await update.effective_message.reply_text('The output file is bigger than 50MB so it can\'t be sent from a bot')
+            await update.effective_message.reply_text('The output file is bigger than 50MB so it can\'t be sent from a bot.')
             return ConversationHandler.END
         with open(output_file, 'rb') as file:
             await update.effective_message.reply_document(document=file)
@@ -303,7 +303,7 @@ async def stop_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 
 
 async def other_messages_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.effective_message.reply_text("Please in order to use this BOT, use the /init command")
+    await update.effective_message.reply_text("Please in order to use this BOT, use the /init command.")
 
 
 def main() -> None:
