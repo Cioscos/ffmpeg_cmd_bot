@@ -34,43 +34,52 @@ logger = logging.getLogger(__name__)
 TEMP_DOWNLOAD_PATH = './temp_download_path/'
 
 # Key to access to the stored file names in the context
-MEDIAGROUP_FILE_NAMES = 'mediagroup_file_names'
+MEDIAGROUP_FILE_NAMES_KEY = 'mediagroup_file_names'
+# Key to access to the pre-input parts
+PRE_INPUT_PARTS_KEY = 'pre_input'
+# Key to access to the post-input parts
+POST_INPUT_PARTS_KEY = 'post_input'
+# Key to access to the command
+COMMAND_KEY = 'command'
+# Key to access to the output path
+OUTPUT_PATH_KEY = 'output_path'
 
 # states definitions for top-level conv handler
-DOCUMENT_SENDING, COMMAND_WAITING, GENERATING_RESULT = map(chr, range(3))
+DOCUMENT_SENDING, COMMAND_WAITING, PRE_INPUT_STATE, POST_INPUT_STATE = map(chr, range(4))
 
 
-def parse_ffmpeg_command(command_string: str, input_file_names: List[str]) -> tuple[list[str], Optional[str]]:
+def parse_ffmpeg_command(pre_input_parts: List[str], post_input_parts: List[str], input_file_names: List[str]) -> tuple[list[str], Optional[str]]:
     """
-    Parses an FFmpeg command string to find the input and output file names.
+    Constructs an FFmpeg command string from pre-input parts, input file names, and post-input parts.
 
     Args:
-        command_string (str): The FFmpeg command as a single string.
-        input_file_names (List[str]): The input file names
+        pre_input_parts (List[str]): FFmpeg options to place before the input files.
+        post_input_parts (List[str]): FFmpeg options to place after the input files.
+        input_file_names (List[str]): The input file names.
 
     Returns:
-        A tuple containing the command parts converted from string and the output file name.
+        A tuple containing the constructed FFmpeg command parts and the output file name.
     """
-    # Split the command string into parts
-    parts = command_string.split()
-
     # Initialize effective_command_parts with 'ffmpeg'
     effective_command_parts = ['ffmpeg']
 
-    # Extend the list with '-i' followed by the input file names
+    # Add pre-input parts (removing double quotes)
+    effective_command_parts.extend([part.replace('"', '') for part in pre_input_parts])
+
+    # Extend the list with '-i' followed by the input file names (removing double quotes from file names)
     for input_file_name in input_file_names:
         effective_command_parts.extend(['-i', input_file_name.replace('"', '')])
 
-    # Extend effective_command_parts with the additional command parts
-    effective_command_parts.extend([part.replace('"', '') for part in parts])
+    # Add post-input parts (removing double quotes)
+    effective_command_parts.extend([part.replace('"', '') for part in post_input_parts])
 
     output_file = None
 
     # The output file is typically the last argument in the command,
-    # but we should ensure it is not a parameter or an option.
+    # but ensure it is not a parameter or an option.
     # Basic check: not starting with '-' and contains a dot (.)
     if effective_command_parts[-1] and not effective_command_parts[-1].startswith('-') and '.' in effective_command_parts[-1]:
-        output_file = TEMP_DOWNLOAD_PATH + effective_command_parts[-1]
+        output_file = TEMP_DOWNLOAD_PATH + effective_command_parts[-1]  # Ensure TEMP_DOWNLOAD_PATH is defined elsewhere
         effective_command_parts[-1] = output_file
 
     return effective_command_parts, output_file
@@ -134,7 +143,7 @@ async def init_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
                                               "Take care that telegram's bots accept files up to 20MB only")
 
     # initialize the user_data dictionary
-    context.user_data.setdefault(MEDIAGROUP_FILE_NAMES, [])
+    context.user_data.setdefault(MEDIAGROUP_FILE_NAMES_KEY, [])
 
     return DOCUMENT_SENDING
 
@@ -166,45 +175,81 @@ async def document_sending_callback(update: Update, context: ContextTypes.DEFAUL
         input_file_name += f"{attachment.file_unique_id}.jpg"
 
     # add the file name to the MEDIAGROUP_FILE_NAMES list in user_data dictionary
-    context.user_data[MEDIAGROUP_FILE_NAMES].append(input_file_name)
+    context.user_data[MEDIAGROUP_FILE_NAMES_KEY].append(input_file_name)
 
     # download the file
     file_path = await file.download_to_drive(input_file_name)
     logger.info(f"File {input_file_name} temporarily saved in the filepath: {file_path}")
 
     if message.media_group_id is None:
-        await update.effective_message.reply_text('Send me other files or send the /cmd command')
+        await update.effective_message.reply_text('Send me other files or send the /pre or /post command')
     else:
         await update.effective_message.reply_text('File from media group received.\n'
-                                                  'Send other files or use /cmd command.')
+                                                  'Send other files or use /pre or /post command.')
 
     return COMMAND_WAITING
 
 
 async def command_waiting_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    await update.effective_message.reply_text(f"Send me the ffmpeg command to apply to the {'file' if len(context.user_data[MEDIAGROUP_FILE_NAMES]) == 1 else 'files'}")
+    file_plural = 'file' if len(context.user_data[MEDIAGROUP_FILE_NAMES_KEY]) == 1 else 'files'
+    if update.effective_message.text == '/pre':
+        await update.effective_message.reply_text(f"Send me the ffmpeg pre-input command part to apply to the {file_plural}.\n"
+                                                  f"It is the command part before the input files")
+        return PRE_INPUT_STATE
+    elif update.effective_message.text == '/post':
+        await update.effective_message.reply_text(f"Send me the ffmpeg post-input command part to apply to the {file_plural}.\n"
+                                                  f"It is the command part after the input files")
+        return POST_INPUT_STATE
+    else:
+        await update.effective_message.reply_text('Command deleted, use /pre or /post command again or /stop')
+        context.user_data.setdefault(PRE_INPUT_PARTS_KEY, None)
+        context.user_data.setdefault(POST_INPUT_PARTS_KEY, None)
+        return COMMAND_WAITING
 
-    return GENERATING_RESULT
+
+async def pre_input_command_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    text = update.effective_message.text
+    parts = text.split()
+    file_plural = 'file' if len(context.user_data[MEDIAGROUP_FILE_NAMES_KEY]) == 1 else 'files'
+
+    context.user_data[PRE_INPUT_PARTS_KEY] = parts
+
+    await update.effective_message.reply_text(f'Now send the post command (the part of the command after the input {file_plural}')
+
+    return POST_INPUT_STATE
+
+
+async def post_input_command_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    text = update.effective_message.text
+    parts = text.split()
+
+    context.user_data[POST_INPUT_PARTS_KEY] = parts
+    file_plural = 'file' if len(context.user_data[MEDIAGROUP_FILE_NAMES_KEY]) == 1 else 'files'
+
+    # reconstruct the command
+    effective_command_parts, output_file = parse_ffmpeg_command(
+        context.user_data[PRE_INPUT_PARTS_KEY],
+        context.user_data[POST_INPUT_PARTS_KEY],
+        context.user_data[MEDIAGROUP_FILE_NAMES_KEY]
+    )
+
+    context.user_data[COMMAND_KEY] = effective_command_parts
+    context.user_data[OUTPUT_PATH_KEY] = output_file
+
+    await update.effective_message.reply_text(f"This is the command that will be applied to the {file_plural}:\n"
+                                              f"{' '.join(effective_command_parts)}")
+
+    await update.effective_message.reply_text('Send /process command to generate the output\n'
+                                              '/reset to delete the command inserted\n'
+                                              '/stop to close the conversation')
+
+    return POST_INPUT_STATE
 
 
 async def command_processing_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    # retrieve the message
-    message = update.effective_message
-    text = message.text
-
-    if 'ffmpeg' in text:
-        await update.message.reply_text("Please do not insert ffmpeg in the command.\n"
-                                        "Example usage: -vf scale=1280x720 resized.jpg")
-        return GENERATING_RESULT
-
-    # split the text into a list representing the command
-    command, output_file = parse_ffmpeg_command(text, context.user_data[MEDIAGROUP_FILE_NAMES])
-    # log parsed command
-    logger.info(command)
-
     # Create subprocess, redirect the standard output and error to subprocess.PIPE
     process = await asyncio.create_subprocess_exec(
-        *command,
+        *context.user_data[COMMAND_KEY],
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE
     )
@@ -222,6 +267,8 @@ async def command_processing_callback(update: Update, context: ContextTypes.DEFA
     # Log the FFmpeg output
     logger.debug(f"FFmpeg output: {stderr.decode()}")
 
+    output_file = context.user_data[OUTPUT_PATH_KEY]
+
     # sending back the processed photo if exists
     if output_file and os.path.exists(output_file) and os.path.getsize(output_file) != 0:
         if (os.path.getsize(output_file) / (1024 * 1024)) > 50:
@@ -235,12 +282,12 @@ async def command_processing_callback(update: Update, context: ContextTypes.DEFA
         return ConversationHandler.END
 
     # Deleting files from the file system
-    for input_file in context.user_data.get(MEDIAGROUP_FILE_NAMES, []):
+    for input_file in context.user_data.get(MEDIAGROUP_FILE_NAMES_KEY, []):
         if os.path.exists(input_file):
             os.remove(input_file)
 
-    # Wiping MEDIAGROUP_FILE_NAMES list
-    context.user_data[MEDIAGROUP_FILE_NAMES].clear()
+    # Wiping user_data
+    context.user_data.clear()
 
     # No need to delete the BytesIO object, it will be cleaned up by Python's garbage collector
     return ConversationHandler.END
@@ -248,7 +295,7 @@ async def command_processing_callback(update: Update, context: ContextTypes.DEFA
 
 async def stop_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     logger.debug('Stop callback called!')
-    context.user_data[MEDIAGROUP_FILE_NAMES] = None
+    context.user_data.clear()
 
     await update.effective_message.reply_text("You have stopped the /init command!")
 
@@ -282,15 +329,23 @@ def main() -> None:
             ],
             COMMAND_WAITING: [
                 MessageHandler(filters.Document.IMAGE | filters.Document.VIDEO | filters.PHOTO | filters.VIDEO, document_sending_callback),
-                CommandHandler('cmd', command_waiting_callback),
+                CommandHandler('pre', command_waiting_callback),
+                CommandHandler('post', command_waiting_callback),
+                CommandHandler('reset', command_waiting_callback),
                 CommandHandler('stop', stop_callback)
             ],
-            GENERATING_RESULT: [
-                MessageHandler(filters.TEXT, command_processing_callback),
+            PRE_INPUT_STATE: [
+                MessageHandler(filters.TEXT, pre_input_command_callback),
                 CommandHandler('stop', stop_callback)
+            ],
+            POST_INPUT_STATE: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, post_input_command_callback),
+                CommandHandler('stop', stop_callback),
+                CommandHandler('reset', command_waiting_callback),
+                CommandHandler('process', command_processing_callback)
             ]
         },
-        fallbacks=[]
+        fallbacks=[CommandHandler('stop', stop_callback)]
     )
     application.add_handler(ffmpeg_command_conv_handler)
     # Handles all the other types of messages
