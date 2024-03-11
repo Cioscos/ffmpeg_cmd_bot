@@ -182,7 +182,7 @@ async def document_sending_callback(update: Update, context: ContextTypes.DEFAUL
 
 
 async def command_waiting_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    await update.effective_message.reply_text(f'Send me the ffmpeg command to apply to the {'file' if len(context.user_data[MEDIAGROUP_FILE_NAMES]) == 1 else 'files'}')
+    await update.effective_message.reply_text(f"Send me the ffmpeg command to apply to the {'file' if len(context.user_data[MEDIAGROUP_FILE_NAMES]) == 1 else 'files'}")
 
     return GENERATING_RESULT
 
