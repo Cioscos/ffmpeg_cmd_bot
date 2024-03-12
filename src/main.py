@@ -265,7 +265,7 @@ async def command_processing_callback(update: Update, context: ContextTypes.DEFA
     await update.message.reply_document(document=stderr_bytesio, caption="FFmpeg output")
 
     # Log the FFmpeg output
-    logger.debug(f"FFmpeg output: {stderr.decode()}")
+    logger.info(f"FFmpeg output: {stderr.decode()}")
 
     output_file = context.user_data[OUTPUT_PATH_KEY]
 
