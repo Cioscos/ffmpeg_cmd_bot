@@ -23,7 +23,7 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     datefmt='%y-%m-%d %H:%M:%S',
     filename='ffmpeg_cmd_bot.log',
-    filemode='a'
+    filemode='w'
 )
 
 # set higher logging level for httpx to avoid all GET and POST requests being logged
