@@ -14,7 +14,9 @@ from telegram.ext import (
     CommandHandler,
     MessageHandler,
     ContextTypes,
-    filters, ConversationHandler
+    filters,
+    ConversationHandler,
+    PicklePersistence
 )
 
 # Setup logging
@@ -319,8 +321,11 @@ def main() -> None:
     if not keyring_initialize():
         exit(0xFF)
 
+    # Initialize the Pickle database
+    persistence = PicklePersistence(filepath='DB.pkl')
+
     # Initialize Application
-    application = Application.builder().token(keyring_get('Telegram')).concurrent_updates(True).build()
+    application = Application.builder().token(keyring_get('Telegram')).persistence(persistence).build()
 
     # Assign an error handler
     application.add_error_handler(error_handler)
@@ -330,6 +335,7 @@ def main() -> None:
 
     ffmpeg_command_conv_handler = ConversationHandler(
         entry_points=[CommandHandler('init', init_callback)],
+        name='ffmpeg_command_conv_handler_v1',
         states={
             DOCUMENT_SENDING: [
                 MessageHandler(filters.Document.IMAGE | filters.Document.VIDEO | filters.PHOTO | filters.VIDEO, document_sending_callback),
