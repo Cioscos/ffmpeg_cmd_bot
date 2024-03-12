@@ -22,7 +22,7 @@ Before you can use this bot, you need to have:
 
 1. Clone the repository:
 ```
-git clone [<repository-url>](https://github.com/Cioscos/ffmpeg_cmd_bot)https://github.com/Cioscos/ffmpeg_cmd_bot
+git clone https://github.com/Cioscos/ffmpeg_cmd_bot
 ```
 2. Install the required Python packages:
 ```
