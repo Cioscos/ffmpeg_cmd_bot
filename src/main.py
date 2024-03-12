@@ -273,13 +273,12 @@ async def command_processing_callback(update: Update, context: ContextTypes.DEFA
     if output_file and os.path.exists(output_file) and os.path.getsize(output_file) != 0:
         if (os.path.getsize(output_file) / (1024 * 1024)) > 50:
             await update.effective_message.reply_text('The output file is bigger than 50MB so it can\'t be sent from a bot.')
-            return ConversationHandler.END
-        with open(output_file, 'rb') as file:
-            await update.effective_message.reply_document(document=file)
-        os.remove(output_file)  # Clean up after sending
+        else:
+            with open(output_file, 'rb') as file:
+                await update.effective_message.reply_document(document=file)
+            os.remove(output_file)  # Clean up after sending
     else:
         await update.effective_message.reply_text('There is a problem with the output file, try to change files or command.')
-        return ConversationHandler.END
 
     # Deleting files from the file system
     for input_file in context.user_data.get(MEDIAGROUP_FILE_NAMES_KEY, []):
