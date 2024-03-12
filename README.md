@@ -9,6 +9,9 @@ This Telegram bot allows users to process multimedia files using FFmpeg directly
 - Error handling with detailed traceback information.
 - Temporary file handling for security and performance.
 
+## Try it
+A currently already hosted telegram bot already exist and it's avaible here: https://t.me/ffmpeg_cmd_bot
+
 ## Prerequisites
 
 Before you can use this bot, you need to have:
@@ -58,3 +61,7 @@ The bot includes comprehensive error handling, which logs errors and sends detai
 ## Contributing
 
 Contributions are welcome! Please feel free to submit pull requests or open issues for bugs, feature requests, or other suggestions.
+
+## TODOs
+
+1. Save the multimedia files in meemory maybe as bytearray instead of saving them on file system even if temporarly.
