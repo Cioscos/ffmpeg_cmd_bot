@@ -228,7 +228,7 @@ async def post_input_command_callback(update: Update, context: ContextTypes.DEFA
 
     # reconstruct the command
     effective_command_parts, output_file = parse_ffmpeg_command(
-        context.user_data[PRE_INPUT_PARTS_KEY],
+        context.user_data.get(PRE_INPUT_PARTS_KEY, []),
         context.user_data[POST_INPUT_PARTS_KEY],
         context.user_data[MEDIAGROUP_FILE_NAMES_KEY]
     )
