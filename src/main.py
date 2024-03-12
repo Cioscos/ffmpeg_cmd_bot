@@ -85,6 +85,13 @@ def parse_ffmpeg_command(pre_input_parts: List[str], post_input_parts: List[str]
     return effective_command_parts, output_file
 
 
+def delete_temp_files(context: ContextTypes.DEFAULT_TYPE) -> None:
+    # Deleting files from the file system
+    for input_file in context.user_data.get(MEDIAGROUP_FILE_NAMES_KEY, []).extend(context.user_data.get(OUTPUT_PATH_KEY), []):
+        if os.path.exists(input_file):
+            os.remove(input_file)
+
+
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     The error callback function.
@@ -281,9 +288,7 @@ async def command_processing_callback(update: Update, context: ContextTypes.DEFA
         await update.effective_message.reply_text('There is a problem with the output file, try to change files or command.')
 
     # Deleting files from the file system
-    for input_file in context.user_data.get(MEDIAGROUP_FILE_NAMES_KEY, []):
-        if os.path.exists(input_file):
-            os.remove(input_file)
+    delete_temp_files(context)
 
     # Wiping user_data
     context.user_data.clear()
@@ -294,6 +299,10 @@ async def command_processing_callback(update: Update, context: ContextTypes.DEFA
 
 async def stop_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     logger.debug('Stop callback called!')
+
+    # Deleting files from the file system
+    delete_temp_files(context)
+    # Wiping user_data
     context.user_data.clear()
 
     await update.effective_message.reply_text("You have stopped the /init command!")
