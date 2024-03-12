@@ -6,8 +6,7 @@ logger = logging.getLogger(__name__)
 
 KEYRING = {
     'Telegram': Optional[str],
-    'DevId': Optional[str],
-    'OpenAI': Optional[str]
+    'DevId': Optional[str]
 }
 
 
