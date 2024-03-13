@@ -99,10 +99,10 @@ def delete_temp_files(context: ContextTypes.DEFAULT_TYPE) -> None:
     output_path = context.user_data.get(OUTPUT_PATH_KEY, [])
 
     # Concatenate the lists to get a combined list of files to delete
-    all_files_to_delete = media_group_file_names.append(output_path)
+    media_group_file_names.append(output_path)
 
     # Deleting files from the file system
-    for input_file in all_files_to_delete:
+    for input_file in media_group_file_names:
         if os.path.exists(input_file):
             os.remove(input_file)
 
